@@ -1,12 +1,17 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
+import re
 
 
 # ----------------------------
 # 1) World model (Blocks World)
 # ----------------------------
+# KEYWORDS FOR THE PARSER. THESE WORDS ARE THE ONES THAT ALLOW THE PARSER TO RECOGNISE PARTS OF THE TEXT AS ATTRIBUTES
 SIZE_RANKS = {"small": 1, "medium": 2, "large": 3}
+COLORS = {"red", "green", "blue", "yellow"}
+SHAPES = {"cube", "pyramid", "block"}
+SURFACES = {"table", "bed", "floor", "window"}
 
 @dataclass(frozen=True)
 class Obj:
@@ -39,7 +44,7 @@ class World:
         self.holding = None
 
     def remove_next_to(self, a: str, b: str) -> None:
-        """Remove a symetric next-to relationship"""
+        """Remove a symetric next-to relationship"""#Maybe not used
         if a in self.next_to and b in self.next_to[a]:
             self.next_to[a].remove(b)
         if b in self.next_to and a in self.next_to[b]:
@@ -171,16 +176,24 @@ class World:
 # 2) Reference grounding (simple semantics)
 # ----------------------------------------
 
-def resolve_ref(world: World, color: Optional[str], shape: Optional[str]) -> List[str]:
+def resolve_ref(world: World,
+    color: Optional[str] = None,
+    shape: Optional[str] = None,
+    size: Optional[str] = None,
+    surface: Optional[str] = None) -> List[str]:
     """Return object names matching the requested properties."""
+
+    if surface and surface in world.objects:
+        return[surface]
+
     matches = []
     for name, obj in world.objects.items():
         if color is not None and obj.color != color:
             continue
-        if shape is not None:
-            # allow 'block' as a generic term (matches anything)
-            if shape != "block" and obj.shape != shape:
-                continue
+        if size is not None and obj.size != size:
+            continue
+        if shape is not None and obj.shape != shape:
+            continue
         matches.append(name)
     return matches
 # ----------------------------------------
@@ -237,8 +250,7 @@ def execute_plan(world: World, plan: List[Tuple[str, str, Optional[str]]]) -> No
 # 1+2) "Parsing": minimal, rule-based parser
 # ----------------------------------------
 
-COLORS = {"red", "green", "blue", "yellow"}
-SHAPES = {"cube", "pyramid", "block"}
+
 
 def parse_command(text: str) -> dict:
     """
@@ -291,6 +303,9 @@ def choose_unique(matches: List[str], what: str) -> str:
 def interpret_and_act(world: World, utterance: str) -> None:
     parsed = parse_command(utterance)
 
+    # these are like actions, they could become a seperate class that does the work but im too lazy to think OOP
+    #I think that like if we had an interface and that interface had a function called action which gets implemented
+    #In each class that inherits from it. Then each action could be a class (bruh).
     if parsed["intent"] == "PICKUP":
         ref = parsed["ref"]
         matches = resolve_ref(world, ref["color"], ref["shape"])
