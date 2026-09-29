@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 import re
+from IntentClassifier import predict_intent
 
 
 # ----------------------------
@@ -539,36 +540,49 @@ INTENT_MAP = {
 
 def parse_command(text: str) -> dict:
     """Parses an atomic command."""
+    intent = predict_intent(text)#Usage of the trained intent classifier to predict the intent of the command
+    #print("Heyo intent classified: " + intent)
 
-    # 1. Match PICKUP commands
-    match_pickup = PICKUP_PATTERN.match(text)
-    if match_pickup:
-        ref_str = match_pickup.group("ref")
-        ref_tokens = re.sub(r"\b(the|a|an)\b", "", ref_str).split()
-        return {"intent": "PICKUP", "ref": parse_descriptor(ref_tokens)}
+    # 1. Handle PICKUP intent
+    if intent == "PICKUP":
+        match_pickup = PICKUP_PATTERN.search(text) or re.search(
+            r"(?:pick\s+up|grab|lift|take|fetch)\s+(?P<ref>.+)", text, re.I
+        )
+        if match_pickup:
+            ref_str = match_pickup.group("ref")
+            ref_tokens = re.sub(r"\b(the|a|an)\b", "", ref_str).split()
+            return {"intent": "PICKUP", "ref": parse_descriptor(ref_tokens)}
 
-    # 2. Match PUT commands (Check container 'in' and surface 'on' first)
-    # This prevents 'next to' inside object X from stealing the main action intent
-    match_put = (
-        PUT_INSIDE_PATTERN.match(text)
-        or PUT_ON_PATTERN.match(text)
-        or PUT_NEXT_TO_PATTERN.match(text)
-    )
-
-    if match_put:
-        prep = match_put.group("prep")
-        intent = INTENT_MAP[prep]
-        #print("parsed as a "+intent+ "command")
-        x_str = re.sub(r"\b(the|a|an)\b", "", match_put.group("x"))
-        y_str = re.sub(r"\b(the|a|an)\b", "", match_put.group("y"))
-
-        return {
-            "intent": intent,
-            "x": parse_descriptor(x_str.split()),
-            "y": parse_descriptor(y_str.split()),
+    # 2. Handle placement intents (PUT_ON, PUT_INSIDE, PUT_NEXT_TO)
+    elif intent in ("PUT_ON", "PUT_INSIDE", "PUT_NEXT_TO"):
+        pattern_map = {
+            "PUT_INSIDE": PUT_INSIDE_PATTERN,
+            "PUT_ON": PUT_ON_PATTERN,
+            "PUT_NEXT_TO": PUT_NEXT_TO_PATTERN,
         }
 
-    raise ValueError(f"Could not parse command: '{text}'")
+        # First attempt entity extraction using the pattern corresponding to the predicted intent
+        match_put = pattern_map[intent].search(text)
+
+        # Fallback to alternative placement patterns if the primary pattern missed
+        if not match_put:
+            match_put = (
+                PUT_INSIDE_PATTERN.search(text)
+                or PUT_ON_PATTERN.search(text)
+                or PUT_NEXT_TO_PATTERN.search(text)
+            )
+
+        if match_put:
+            x_str = re.sub(r"\b(the|a|an)\b", "", match_put.group("x"))
+            y_str = re.sub(r"\b(the|a|an)\b", "", match_put.group("y"))
+
+            return {
+                "intent": intent,  # Preserves the ML-classified intent
+                "x": parse_descriptor(x_str.split()),
+                "y": parse_descriptor(y_str.split()),
+            }
+
+    raise ValueError(f"Could not parse entities for classified intent '{intent}' in text: '{text}'")
 
 def parse_descriptor(tokens: List[str]) -> dict:
     original_tokens = list(tokens)  # Preserve original tokens before splitting
@@ -603,7 +617,7 @@ def parse_descriptor(tokens: List[str]) -> dict:
             "surface": surface,
             "next_to_rel": next_to_target,
             "inside_rel": inside_target,
-            "raw_tokens": original_tokens,  # Added key
+            "raw_tokens": original_tokens,  
         }
 
     color = next((w for w in tokens if w in COLORS), None)
@@ -617,7 +631,7 @@ def parse_descriptor(tokens: List[str]) -> dict:
         "surface": None,
         "next_to_rel": next_to_target,
         "inside_rel": inside_target,
-        "raw_tokens": original_tokens,  # Added key
+        "raw_tokens": original_tokens,  
     }
 # ----------------------------------------
 # Dialogue manager: clarification behavior
@@ -744,7 +758,7 @@ if __name__ == "__main__":
     interpret_and_act(world,"take the basketball and put it on the keyboard")
     interpret_and_act(world,"put the keyboard on the bed and put the trash bin on the bed")
     interpret_and_act(world,"pick up the cup and put it on the table")
-    interpret_and_act(world,"can you put the purple blanket next to the keyboard?")
+    interpret_and_act(world,"can you put the purple blanket next to the keyboard?")#Using the trained intent classifier,this gets missclassified
     interpret_and_act(world,"take the purple blanket next to the keyboard and put it on the floor")#Supports spatial relation in object description
     interpret_and_act(world,"put the basketball next to the pillow")
 

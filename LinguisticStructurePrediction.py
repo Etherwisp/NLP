@@ -6,7 +6,7 @@ from sklearn.metrics import accuracy_score
 
 train_data = [
     # =========================================================================
-    # --- 1. PICK_UP Intents (Ακριβώς 50 παραδείγματα) ---
+    # --- 1. PICK_UP Intents  ---
     # =========================================================================
     ("Pick up the green ball", "PICKUP"),
     ("Pick up the red block", "PICKUP"),
@@ -60,7 +60,7 @@ train_data = [
     ("take the item located upstairs", "PICKUP"),
 
     # =========================================================================
-    # --- 2. PUT_ON Intents (Ακριβώς 50 παραδείγματα) ---
+    # --- 2. PUT_ON Intents ---
     # =========================================================================
     ("put the green ball on the table", "PUT_ON"),
     ("place the red block on the shelf", "PUT_ON"),
@@ -114,7 +114,7 @@ train_data = [
     ("set the final block on the shelf", "PUT_ON"),
 
     # =========================================================================
-    # --- 3. PUT_INSIDE Intents (Ακριβώς 50 παραδείγματα) ---
+    # --- 3. PUT_INSIDE Intents  ---
     # =========================================================================
     ("put the green ball in the box", "PUT_INSIDE"),
     ("place the red block in the drawer", "PUT_INSIDE"),
@@ -168,7 +168,7 @@ train_data = [
     ("place the item deep inside the main box", "PUT_INSIDE"),
 
     # =========================================================================
-    # --- 4. PUT_NEXT_TO Intents (Ακριβώς 50 παραδείγματα) ---
+    # --- 4. PUT_NEXT_TO Intents ---
     # =========================================================================
     ("put the green ball next to the red block", "PUT_NEXT_TO"),
     ("place the blue cube beside the yellow box", "PUT_NEXT_TO"),
@@ -225,7 +225,7 @@ train_data = [
 Text_train = [item[0] for item in train_data]
 Label_train = [item[1] for item in train_data]
 
-# 2. Κατασκευή και εκπαίδευση του μοντέλου μηχανικής μάθησης (Stage 2 Requirement)
+# 2. Κατασκευή και εκπαίδευση του μοντέλου μηχανικής μάθησης 
 intent_model = make_pipeline(
     TfidfVectorizer(ngram_range=(1, 2)),
     LogisticRegression(random_state=42)
@@ -235,7 +235,7 @@ intent_model = make_pipeline(
 intent_model.fit(Text_train, Label_train)
 
 
-# 3. Δοκιμή/Αξιολόγηση (Evaluation για την αναφορά σου)
+# 3. Δοκιμή/Αξιολόγηση 
 test_data = [
     ("pick up the red block", "PICKUP"),
     ("put the ball on the table", "PUT_ON"),
